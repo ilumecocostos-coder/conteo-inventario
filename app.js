@@ -36,7 +36,8 @@ async function iniciar() {
   S.perfil = p;
   $('#login').hidden = true; $('#app').hidden = false;
   $('#usuario').textContent = p.nombre + (p.rol === 'admin' ? ' (admin)' : '');
-  $('#tab-admin').hidden = $('#tab-producto').hidden = $('#r-anul-l').hidden = p.rol !== 'admin';
+  $('#tab-admin').hidden = $('#r-anul-l').hidden = p.rol !== 'admin';
+  $('#p-cant').parentElement.hidden = p.rol !== 'admin';   // el contador no define la cantidad del sistema
   await pintarBodegas();
   vaciarCola();
 }
@@ -298,7 +299,7 @@ $('#usr-lista').onchange = async e => {
 /* Crear un producto a mano (referencia y descripción se guardan tal cual se escriben) */
 $('#p-add').onclick = async () => {
   const b = $('#p-bod').value, ref = $('#p-ref').value.trim(), desc = $('#p-desc').value.trim(), ct = $('#p-cant').value.trim().replace(',', '.');
-  const cant = ct === '' ? 0 : Number(ct);                 // cantidad vacía = 0
+  const cant = S.perfil.rol !== 'admin' || ct === '' ? 0 : Number(ct);   // cantidad vacía = 0; el contador siempre crea con 0
   if (!b) return msg('Selecciona la bodega.', 'err');
   if (!ref) return msg('Escribe la referencia.', 'err');
   if (!desc) return msg('Escribe la descripción.', 'err');
