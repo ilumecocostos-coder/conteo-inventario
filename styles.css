@@ -43,3 +43,27 @@ td button{min-height:38px;border:1px solid var(--bad);color:var(--bad);backgroun
 .usr b{display:block;margin-bottom:6px}.usr select{margin:0 0 10px}
 #toast{position:fixed;left:14px;right:14px;bottom:calc(20px + env(safe-area-inset-bottom,0px));max-width:520px;margin:auto;padding:14px 16px;border-radius:8px;color:#fff;font-weight:600;background:var(--ink);z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 #toast.ok{background:var(--ok)}#toast.err{background:var(--bad)}[hidden]{display:none!important}
+
+/* ===== Versión 2: encabezado con logo, pestañas destacadas y mejoras para celular ===== */
+header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px}
+header .marca{text-align:center;font-size:15px;letter-spacing:2px}
+.hl img{display:block;height:38px;max-width:110px;object-fit:contain;background:#fff;border-radius:8px;padding:3px}
+.hr{justify-self:end}
+#barra{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#E5E9EF;color:var(--ink2);font-size:13px;font-weight:500;padding:6px 16px}
+nav{display:flex;gap:8px;padding:8px;background:var(--w);border-bottom:1px solid var(--l)}
+nav button{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;border-radius:12px;background:#E8EEF5;color:var(--ink);font:700 14px inherit;letter-spacing:.2px}
+nav button.on{background:var(--acc);color:#fff;box-shadow:0 3px 10px rgba(47,93,140,.35)}
+nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#resumen{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;top:77px;font-size:13px;line-height:1.3;padding:10px 12px}
+#resumen small{display:block;color:#9CA3AF;font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+#resumen b{font-weight:600;overflow-wrap:anywhere}
+#ultimo{text-align:center;color:var(--m);font-size:14px;margin:4px 0 14px}
+.login-card{text-align:center}.login-card label{text-align:left}
+.logo-login{display:block;max-height:64px;max-width:70%;margin:0 auto 14px;object-fit:contain}
+#login{min-height:100vh;min-height:100dvh}
+@media (max-width:380px){.dos{grid-template-columns:1fr}.tarjeta{font-size:15px}header .marca{font-size:13px;letter-spacing:1px}}
+
+/* Cuatro pestañas: en celulares angostos se usan nombres cortos */
+nav button{font-size:13px;padding:0 4px}.corto{display:none}
+@media (max-width:480px){.largo{display:none}.corto{display:inline}nav{gap:6px;padding:8px 6px}}
+@media (max-width:380px){nav svg{width:20px;height:20px}}

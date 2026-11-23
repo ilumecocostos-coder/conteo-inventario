@@ -36,7 +36,7 @@ async function iniciar() {
   S.perfil = p;
   $('#login').hidden = true; $('#app').hidden = false;
   $('#usuario').textContent = p.nombre + (p.rol === 'admin' ? ' (admin)' : '');
-  $('#tab-admin').hidden = $('#r-anul-l').hidden = p.rol !== 'admin';
+  $('#tab-admin').hidden = $('#tab-producto').hidden = $('#r-anul-l').hidden = p.rol !== 'admin';
   await pintarBodegas();
   vaciarCola();
 }
@@ -49,12 +49,12 @@ async function pintarBodegas() {
     ? S.bodegas.map(x => `<button class="tarjeta" data-id="${esc(x.id)}"><span>${esc(x.id)}</span>${esc(x.nombre)}</button>`).join('')
     : '<p class="panel">No tienes bodegas asignadas. Pide al administrador que te las asigne.</p>';
   const ops = opciones(S.bodegas.map(b => ({ id: b.id, nombre: b.id + ' · ' + b.nombre })), 'Selecciona bodega…');
-  ['#r-bod', '#a-bod', '#d-bod', '#u-bod'].forEach(s => $(s).innerHTML = ops);
+  ['#r-bod', '#a-bod', '#d-bod', '#u-bod', '#p-bod'].forEach(s => $(s).innerHTML = ops);
   $('#e-bods').innerHTML = S.bodegas.map(b => `<label class="chk"><input type="checkbox" value="${esc(b.id)}"> ${esc(b.id)} · ${esc(b.nombre)}</label>`).join('');
 }
 $$('#tabs button').forEach(b => b.onclick = () => {
   $$('#tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['conteo', 'registros', 'admin'].forEach(t => $('#t-' + t).hidden = t !== b.dataset.t);
+  ['conteo', 'registros', 'producto', 'admin'].forEach(t => $('#t-' + t).hidden = t !== b.dataset.t);
 });
 
 /* ---------- 1) Selección de bodega ---------- */
@@ -67,11 +67,12 @@ $('#bodegas').onclick = async e => {
   if (u.error || en.error) return msg('No se pudieron cargar encargados y ubicaciones.', 'err');
   $('#ubi').innerHTML = opciones(u.data, 'Selecciona ubicación…');
   $('#enc').innerHTML = opciones(en.data.map(r => r.encargados).filter(x => x && x.activo).sort((a, c) => a.nombre.localeCompare(c.nombre)), 'Selecciona encargado…');
-  $('#bodegas').hidden = true; $('#conteo').hidden = false; resumen();
+  [$('#enc'), $('#ubi')].forEach(s => { if (s.options.length === 2) s.selectedIndex = 1; });   // si solo hay una opción, se elige sola
+  $('#bodegas').hidden = true; $('#conteo').hidden = false; $('#ultimo').textContent = ''; resumen();
 };
 $('#cambiar').onclick = () => { S.bodega = null; $('#conteo').hidden = true; $('#bodegas').hidden = false; };
 const txt = s => s.selectedIndex > 0 ? esc(s.options[s.selectedIndex].text) : '<em>sin elegir</em>';
-function resumen() { $('#resumen').innerHTML = `Bodega: <b>${esc(S.bodega.nombre)}</b><br>Encargado: <b>${txt($('#enc'))}</b><br>Ubicación: <b>${txt($('#ubi'))}</b>`; }
+function resumen() { $('#resumen').innerHTML = `<div><small>Bodega</small><b>${esc(S.bodega.id)} · ${esc(S.bodega.nombre)}</b></div><div><small>Encargado</small><b>${txt($('#enc'))}</b></div><div><small>Ubicación</small><b>${txt($('#ubi'))}</b></div>`; }
 $('#enc').onchange = $('#ubi').onchange = resumen;   // el encargado y la ubicación solo cambian si el usuario los modifica
 
 /* ---------- 2) Autocompletar referencia ---------- */
@@ -114,6 +115,8 @@ $('#f-conteo').onsubmit = async e => {
     const fila = { bodega_id: S.bodega.id, ubicacion_id: +ubi, encargado_id: +enc, referencia: ref, cantidad: cant, cliente_id: uuid() };
     const r = await enviar(fila);
     msg(r === 'ok' ? `Guardado ✔ ${ref} · ${cant}` : 'Sin conexión: guardado en el equipo, se enviará al reconectar.', r === 'ok' ? 'ok' : '');
+    $('#ultimo').innerHTML = (r === 'ok' ? 'Último guardado: ' : 'Pendiente de envío: ') + '<b>' + esc(ref) + '</b> · ' + cant;
+    if (navigator.vibrate) navigator.vibrate(60);
     $('#ref').value = $('#cant').value = ''; $('#desc').textContent = ''; S.prod = null;   // solo se limpian referencia y cantidad
     $('#ref').focus();
   } catch (err) { msg('No se guardó: ' + err.message, 'err'); }
@@ -290,6 +293,22 @@ $('#usr-lista').onchange = async e => {
                                       : await sb.from('perfiles_bodegas').delete().eq('perfil_id', t.dataset.u).eq('bodega_id', t.value);
   else return;
   r.error ? msg('No se guardó: ' + r.error.message, 'err') : msg('Cambio guardado.', 'ok');
+};
+
+/* Crear un producto a mano (referencia y descripción se guardan tal cual se escriben) */
+$('#p-add').onclick = async () => {
+  const b = $('#p-bod').value, ref = $('#p-ref').value.trim(), desc = $('#p-desc').value.trim(), ct = $('#p-cant').value.trim().replace(',', '.');
+  const cant = ct === '' ? 0 : Number(ct);                 // cantidad vacía = 0
+  if (!b) return msg('Selecciona la bodega.', 'err');
+  if (!ref) return msg('Escribe la referencia.', 'err');
+  if (!desc) return msg('Escribe la descripción.', 'err');
+  if (!isFinite(cant) || cant < 0) return msg('La cantidad en sistema debe ser un número igual o mayor a 0.', 'err');
+  $('#p-add').disabled = true;
+  const { error } = await sb.from('productos').insert({ referencia: ref, bodega_id: b, descripcion: desc, cantidad_sistema: cant });
+  $('#p-add').disabled = false;
+  if (error) return fallo(error, 'Esa referencia ya existe en esta bodega.');
+  msg('Producto creado: ' + ref, 'ok');
+  $('#p-ref').value = $('#p-desc').value = $('#p-cant').value = ''; $('#p-ref').focus();   // la bodega queda elegida para crear varios seguidos
 };
 
 /* ---------- Inicio ---------- */

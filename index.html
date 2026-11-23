@@ -15,7 +15,8 @@
 <!-- LOGIN -->
 <section id="login">
   <form id="f-login" class="login-card">
-    <div class="marca">CONTEO DE INVENTARIO</div><h1>Cierre de año</h1>
+    <img class="logo-login" src="logo.png" alt="" onerror="this.style.display='none'">
+    <div class="marca">CONTEO INVENTARIO</div><h1>Cierre de año</h1>
     <label>Correo<input id="l-email" type="email" autocomplete="username" required></label>
     <label>Contraseña<input id="l-pass" type="password" autocomplete="current-password" required></label>
     <button class="btn" type="submit">Ingresar</button>
@@ -24,8 +25,18 @@
 
 <!-- APP -->
 <div id="app" hidden>
-  <header><div class="marca">CONTEO DE INVENTARIO</div><span id="pendientes" hidden></span><span id="usuario"></span><button id="salir" class="link">Salir</button></header>
-  <nav id="tabs"><button data-t="conteo" class="on">Conteo</button><button data-t="registros">Registros</button><button data-t="admin" id="tab-admin" hidden>Administración</button></nav>
+  <header>
+    <div class="hl"><img id="logo" src="logo.png" alt="Logo" onerror="this.style.display='none'"></div>
+    <div class="marca">CONTEO INVENTARIO</div>
+    <div class="hr"><button id="salir" class="link">Salir</button></div>
+  </header>
+  <div id="barra"><span id="usuario"></span><span id="pendientes" hidden></span></div>
+  <nav id="tabs">
+    <button data-t="conteo" class="on"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/></svg>Conteo</button>
+    <button data-t="registros"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Registros</button>
+    <button data-t="producto" id="tab-producto" hidden><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span class="largo">Crear producto</span><span class="corto">Producto</span></button>
+    <button data-t="admin" id="tab-admin" hidden><svg viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg><span class="largo">Administración</span><span class="corto">Admin</span></button>
+  </nav>
 
   <!-- Bodega + formulario -->
   <section id="t-conteo" class="vista">
@@ -40,6 +51,7 @@
         <label>Cantidad<input id="cant" type="text" inputmode="decimal" placeholder="0"></label>
         <button class="btn" id="guardar" type="submit">Guardar conteo</button>
       </form>
+      <div id="ultimo"></div>
     </div>
   </section>
 
@@ -58,9 +70,20 @@
     <details id="r-tot"><summary>Totales por referencia (bodega)</summary><div class="tabla"><table id="r-tot-t"></table></div></details>
   </section>
 
+  <!-- Crear producto -->
+  <section id="t-producto" class="vista" hidden>
+    <div class="panel"><h2>Crear producto</h2>
+      <p class="nota">La referencia y la descripción se guardan exactamente como las escribes (sin cambiar mayúsculas ni ceros), tal como están en HGI.</p>
+      <label>Bodega<select id="p-bod"></select></label>
+      <label>Referencia<input id="p-ref" autocapitalize="off" autocomplete="off"></label>
+      <label>Descripción<input id="p-desc" autocomplete="off"></label>
+      <label>Cantidad en sistema (opcional)<input id="p-cant" type="text" inputmode="decimal" placeholder="0"></label>
+      <button class="btn" id="p-add">Crear producto</button></div>
+  </section>
+
   <!-- Administración -->
   <section id="t-admin" class="vista" hidden>
-    <div id="sub"><button data-s="prod" class="on">Productos</button><button data-s="dif">Diferencias</button><button data-s="cat">Catálogos</button><button data-s="usr">Usuarios</button></div>
+    <div id="sub"><button data-s="prod" class="on">Cargar CSV</button><button data-s="dif">Diferencias</button><button data-s="cat">Catálogos</button><button data-s="usr">Usuarios</button></div>
 
     <div id="sp-prod" class="sp panel"><h2>Cargar productos desde CSV</h2>
       <p class="nota">Columnas: referencia, descripcion, cantidad_sistema. Si la referencia ya existe en la bodega, se actualiza.</p>
