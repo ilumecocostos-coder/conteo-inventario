@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Conteo de inventario</title><meta name="theme-color" content="#1F2A37">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" type="image/png" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Conteo">
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<div id="toast" hidden role="status"></div>
+
+<!-- LOGIN -->
+<section id="login">
+  <form id="f-login" class="login-card">
+    <div class="marca">CONTEO DE INVENTARIO</div><h1>Cierre de año</h1>
+    <label>Correo<input id="l-email" type="email" autocomplete="username" required></label>
+    <label>Contraseña<input id="l-pass" type="password" autocomplete="current-password" required></label>
+    <button class="btn" type="submit">Ingresar</button>
+  </form>
+</section>
+
+<!-- APP -->
+<div id="app" hidden>
+  <header><div class="marca">CONTEO DE INVENTARIO</div><span id="pendientes" hidden></span><span id="usuario"></span><button id="salir" class="link">Salir</button></header>
+  <nav id="tabs"><button data-t="conteo" class="on">Conteo</button><button data-t="registros">Registros</button><button data-t="admin" id="tab-admin" hidden>Administración</button></nav>
+
+  <!-- Bodega + formulario -->
+  <section id="t-conteo" class="vista">
+    <div id="bodegas" class="tarjetas"></div>
+    <div id="conteo" hidden>
+      <div id="resumen"></div><button id="cambiar" class="link">‹ Cambiar bodega</button>
+      <form id="f-conteo" class="panel" autocomplete="off">
+        <label>Encargado<select id="enc"></select></label>
+        <label>Ubicación<select id="ubi"></select></label>
+        <label>Referencia<input id="ref" type="search" placeholder="Referencia o descripción" enterkeyhint="search"></label>
+        <div id="sug" class="sug" hidden></div><div id="desc"></div>
+        <label>Cantidad<input id="cant" type="text" inputmode="decimal" placeholder="0"></label>
+        <button class="btn" id="guardar" type="submit">Guardar conteo</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Registros -->
+  <section id="t-registros" class="vista" hidden>
+    <div class="panel filtros">
+      <label>Bodega<select id="r-bod"></select></label>
+      <div class="dos"><label>Desde<input type="date" id="r-desde"></label><label>Hasta<input type="date" id="r-hasta"></label></div>
+      <div class="dos"><label>Ubicación<select id="r-ubi"></select></label><label>Encargado<select id="r-enc"></select></label></div>
+      <label>Referencia<input id="r-ref" type="search"></label>
+      <label class="chk" id="r-anul-l" hidden><input type="checkbox" id="r-anul"> Incluir anulados</label>
+      <div class="dos"><button class="btn" id="r-buscar">Buscar</button><button class="btn sec" id="r-csv">Exportar CSV</button></div>
+    </div>
+    <div class="tabla"><table id="r-tabla"></table></div>
+    <div class="pager"><button class="btn sec" id="r-prev">‹</button><span id="r-pag"></span><button class="btn sec" id="r-next">›</button></div>
+    <details id="r-tot"><summary>Totales por referencia (bodega)</summary><div class="tabla"><table id="r-tot-t"></table></div></details>
+  </section>
+
+  <!-- Administración -->
+  <section id="t-admin" class="vista" hidden>
+    <div id="sub"><button data-s="prod" class="on">Productos</button><button data-s="dif">Diferencias</button><button data-s="cat">Catálogos</button><button data-s="usr">Usuarios</button></div>
+
+    <div id="sp-prod" class="sp panel"><h2>Cargar productos desde CSV</h2>
+      <p class="nota">Columnas: referencia, descripcion, cantidad_sistema. Si la referencia ya existe en la bodega, se actualiza.</p>
+      <label>Bodega<select id="a-bod"></select></label><input type="file" id="a-file" accept=".csv,text/csv">
+      <button class="btn" id="a-cargar">Cargar CSV</button></div>
+
+    <div id="sp-dif" class="sp" hidden><div class="panel"><h2>Diferencias: contado vs. sistema</h2>
+      <label>Bodega<select id="d-bod"></select></label>
+      <label class="chk"><input type="checkbox" id="d-solo" checked> Solo con diferencia</label>
+      <div class="dos"><button class="btn" id="d-ver">Ver</button><button class="btn sec" id="d-csv">Exportar CSV</button></div></div>
+      <div class="tabla"><table id="d-tabla"></table></div></div>
+
+    <div id="sp-cat" class="sp" hidden>
+      <div class="panel"><h2>Nueva bodega</h2>
+        <div class="dos"><label>Código<input id="b-id" placeholder="04"></label><label>Nombre<input id="b-nom" placeholder="Bodega principal"></label></div>
+        <button class="btn" id="b-add">Crear bodega</button></div>
+      <div class="panel"><h2>Ubicaciones de una bodega</h2>
+        <label>Bodega<select id="u-bod"></select></label>
+        <label>Ubicaciones (una por línea)<textarea id="u-txt" rows="4" placeholder="A-01&#10;A-02&#10;B-01"></textarea></label>
+        <button class="btn" id="u-add">Crear ubicaciones</button></div>
+      <div class="panel"><h2>Nuevo encargado</h2>
+        <label>Nombre<input id="e-nom"></label><div class="etq">Bodegas donde puede contar</div><div id="e-bods" class="chips"></div>
+        <button class="btn" id="e-add">Crear encargado</button></div>
+    </div>
+
+    <div id="sp-usr" class="sp" hidden><p class="nota">Los usuarios se crean en Supabase (Authentication → Users). Aquí defines su rol y las bodegas que pueden ver.</p><div id="usr-lista"></div></div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="app.js"></script>
+</body></html>
