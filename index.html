@@ -34,9 +34,11 @@
   <nav id="tabs">
     <button data-t="conteo" class="on"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/></svg>Conteo</button>
     <button data-t="registros"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Registros</button>
+    <button data-t="ensambles"><svg viewBox="0 0 24 24"><path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Ensambles</button>
     <button data-t="producto" id="tab-producto"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span class="largo">Crear producto</span><span class="corto">Producto</span></button>
     <button data-t="admin" id="tab-admin" hidden><svg viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg><span class="largo">Administración</span><span class="corto">Admin</span></button>
   </nav>
+  <div id="pagina"><div class="pg-t" id="p-titulo">Conteo de inventario</div><p class="pg-s" id="p-sub">Selecciona una bodega para comenzar</p></div>
 
   <!-- Bodega + formulario -->
   <section id="t-conteo" class="vista">
@@ -70,6 +72,15 @@
     <details id="r-tot"><summary>Totales por referencia (bodega)</summary><div class="tabla"><table id="r-tot-t"></table></div></details>
   </section>
 
+  <!-- Ensambles (consulta) -->
+  <section id="t-ensambles" class="vista" hidden>
+    <div class="panel">
+      <label>Referencia principal<input id="ens-q" type="search" placeholder="Ej.: 3372J-17-59" autocomplete="off" autocapitalize="off" enterkeyhint="search"></label>
+      <div id="ens-res" class="res"><p class="vacio">Escribe al menos 2 caracteres para buscar.</p></div>
+    </div>
+    <div id="ens-det" hidden></div>
+  </section>
+
   <!-- Crear producto -->
   <section id="t-producto" class="vista" hidden>
     <div class="panel"><h2>Crear producto</h2>
@@ -83,7 +94,7 @@
 
   <!-- Administración -->
   <section id="t-admin" class="vista" hidden>
-    <div id="sub"><button data-s="prod" class="on">Cargar CSV</button><button data-s="dif">Diferencias</button><button data-s="cat">Catálogos</button><button data-s="usr">Usuarios</button></div>
+    <div id="sub"><button data-s="prod" class="on">Cargar CSV</button><button data-s="dif">Diferencias</button><button data-s="cat">Catálogos</button><button data-s="ens">Ensambles</button><button data-s="usr">Usuarios</button></div>
 
     <div id="sp-prod" class="sp panel"><h2>Cargar productos desde CSV</h2>
       <p class="nota">Columnas: referencia, descripcion, cantidad_sistema. Si la referencia ya existe en la bodega, se actualiza.</p>
@@ -107,6 +118,18 @@
       <div class="panel"><h2>Nuevo encargado</h2>
         <label>Nombre<input id="e-nom"></label><div class="etq">Bodegas donde puede contar</div><div id="e-bods" class="chips"></div>
         <button class="btn" id="e-add">Crear encargado</button></div>
+    </div>
+
+    <div id="sp-ens" class="sp" hidden>
+      <div class="panel"><h2>Crear ensamble</h2>
+        <label>Referencia principal<input id="ens-p" autocomplete="off" autocapitalize="off"></label>
+        <label>Descripción (opcional)<input id="ens-d" autocomplete="off"></label>
+        <label>Componente 1<input id="ens-c1" autocomplete="off" autocapitalize="off"></label>
+        <label>Componente 2<input id="ens-c2" autocomplete="off" autocapitalize="off"></label>
+        <button class="btn" id="ens-add">Crear ensamble</button></div>
+      <div class="panel"><h2>Cargar ensambles desde CSV</h2>
+        <p class="nota">Una fila por componente. Columnas: ensamble, componente, descripcion (opcional), cantidad (opcional, por defecto 1).</p>
+        <input type="file" id="ens-file" accept=".csv,text/csv"><button class="btn" id="ens-csv">Cargar CSV</button></div>
     </div>
 
     <div id="sp-usr" class="sp" hidden><p class="nota">Los usuarios se crean en Supabase (Authentication → Users). Aquí defines su rol y las bodegas que pueden ver.</p><div id="usr-lista"></div></div>

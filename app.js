@@ -53,9 +53,16 @@ async function pintarBodegas() {
   ['#r-bod', '#a-bod', '#d-bod', '#u-bod', '#p-bod'].forEach(s => $(s).innerHTML = ops);
   $('#e-bods').innerHTML = S.bodegas.map(b => `<label class="chk"><input type="checkbox" value="${esc(b.id)}"> ${esc(b.id)} · ${esc(b.nombre)}</label>`).join('');
 }
+const TITULOS = {
+  conteo: ['Conteo de inventario', 'Selecciona una bodega para comenzar'],
+  registros: ['Registros de conteo', 'Consulta, filtra y exporta los conteos'],
+  ensambles: ['Consulta de ensambles', 'Busca la referencia principal y revisa sus componentes'],
+  producto: ['Crear producto', 'Registra una referencia nueva en una bodega'],
+  admin: ['Administración', 'Productos, diferencias, catálogos, ensambles y usuarios'] };
 $$('#tabs button').forEach(b => b.onclick = () => {
+  $('#p-titulo').textContent = TITULOS[b.dataset.t][0]; $('#p-sub').textContent = TITULOS[b.dataset.t][1];
   $$('#tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['conteo', 'registros', 'producto', 'admin'].forEach(t => $('#t-' + t).hidden = t !== b.dataset.t);
+  ['conteo', 'registros', 'ensambles', 'producto', 'admin'].forEach(t => $('#t-' + t).hidden = t !== b.dataset.t);
 });
 
 /* ---------- 1) Selección de bodega ---------- */
@@ -310,6 +317,75 @@ $('#p-add').onclick = async () => {
   if (error) return fallo(error, 'Esa referencia ya existe en esta bodega.');
   msg('Producto creado: ' + ref, 'ok');
   $('#p-ref').value = $('#p-desc').value = $('#p-cant').value = ''; $('#p-ref').focus();   // la bodega queda elegida para crear varios seguidos
+};
+
+/* ---------- Ensambles: consulta (todos) ---------- */
+const resalta = (t, q) => {                                // marca en amarillo lo que coincide con la búsqueda
+  const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+  return String(t ?? '').split(re).map((p, i) => i % 2 ? '<mark>' + esc(p) + '</mark>' : esc(p)).join('');
+};
+let debE;
+$('#ens-q').oninput = () => {
+  clearTimeout(debE); $('#ens-det').hidden = true;
+  const q = $('#ens-q').value.trim().replace(/[,()%*\\]/g, ' ').trim();
+  if (q.length < 2) { $('#ens-res').innerHTML = '<p class="vacio">Escribe al menos 2 caracteres para buscar.</p>'; return; }
+  debE = setTimeout(async () => {
+    const { data, error } = await sb.from('ensambles').select('referencia,descripcion')
+      .or(`referencia.ilike.%${q}%,descripcion.ilike.%${q}%`).order('referencia').limit(10);
+    if (error) return msg('Error al buscar: ' + error.message, 'err');
+    $('#ens-res').innerHTML = data.length
+      ? data.map(x => `<button type="button" data-e="${esc(x.referencia)}"><b>${resalta(x.referencia, q)}</b><span>${resalta(x.descripcion || '', q)}</span></button>`).join('')
+      : '<p class="vacio">Sin coincidencias.</p>';
+  }, 200);
+};
+$('#ens-res').onclick = async e => {
+  const b = e.target.closest('button[data-e]'); if (!b) return;
+  const ref = b.dataset.e, desc = b.querySelector('span').textContent;
+  const { data, error } = await sb.from('ensamble_componentes').select('componente,descripcion,cantidad').eq('ensamble', ref).order('componente');
+  if (error) return msg('Error al consultar: ' + error.message, 'err');
+  $('#ens-q').value = ref; $('#ens-res').innerHTML = '';
+  $('#ens-det').innerHTML = `<div class="ens-card"><div class="eyebrow">Referencia principal</div><div class="ens-ref">${esc(ref)}</div><div class="ens-desc">${esc(desc)}</div>` +
+    `<div class="eyebrow">Está formada por (${data.length})</div><div class="comp-lista">` +
+    (data.map(c => `<div class="comp"><b>${esc(c.componente)}</b>${c.descripcion ? `<span>${esc(c.descripcion)}</span>` : ''}${Number(c.cantidad) !== 1 ? `<em>× ${c.cantidad}</em>` : ''}</div>`).join('') || '<p class="vacio">Este ensamble aún no tiene componentes.</p>') + '</div></div>';
+  $('#ens-det').hidden = false; $('#ens-det').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+/* ---------- Ensambles: administración (admin) ---------- */
+$('#ens-add').onclick = async () => {
+  const p = $('#ens-p').value.trim(), d = $('#ens-d').value.trim(), c1 = $('#ens-c1').value.trim(), c2 = $('#ens-c2').value.trim();
+  if (!p || !c1 || !c2) return msg('Escribe la referencia principal y los dos componentes.', 'err');
+  if (c1 === c2) return msg('Los dos componentes deben ser distintos.', 'err');
+  $('#ens-add').disabled = true;
+  try {
+    let r = await sb.from('ensambles').insert({ referencia: p, descripcion: d || null });
+    if (r.error) return fallo(r.error, 'Ese ensamble ya existe. Para modificarlo usa Cargar CSV.');
+    r = await sb.from('ensamble_componentes').insert([{ ensamble: p, componente: c1 }, { ensamble: p, componente: c2 }]);
+    if (r.error) return fallo(r.error);
+    msg('Ensamble creado: ' + p, 'ok'); ['#ens-p', '#ens-d', '#ens-c1', '#ens-c2'].forEach(s => $(s).value = ''); $('#ens-p').focus();
+  } finally { $('#ens-add').disabled = false; }
+};
+$('#ens-csv').onclick = async () => {
+  const f = $('#ens-file').files[0]; if (!f) return msg('Elige el archivo CSV.', 'err');
+  const rows = parseCSV(await f.text());
+  if (rows.length && /^(ensamble|principal|referencia)/i.test(rows[0][0].trim())) rows.shift();
+  const comp = new Map(), ens = new Set();
+  rows.forEach(r => {
+    const e = (r[0] || '').trim(), c = (r[1] || '').trim(); if (!e || !c) return;
+    const n = Number(String(r[3] || '1').replace(',', '.'));
+    ens.add(e); comp.set(e + '\u0001' + c, { ensamble: e, componente: c, descripcion: (r[2] || '').trim() || null, cantidad: n > 0 ? n : 1 });
+  });
+  if (!comp.size) return msg('El archivo no tiene filas válidas.', 'err');
+  const lotes = (arr, n = 500) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
+  $('#ens-csv').disabled = true;
+  try {
+    for (const l of lotes([...ens].map(referencia => ({ referencia })))) {   // si el ensamble ya existe, no se toca su descripción
+      const { error } = await sb.from('ensambles').upsert(l, { onConflict: 'referencia', ignoreDuplicates: true }); if (error) throw error;
+    }
+    for (const l of lotes([...comp.values()])) {
+      const { error } = await sb.from('ensamble_componentes').upsert(l, { onConflict: 'ensamble,componente' }); if (error) throw error;
+    }
+    msg(`Listo: ${ens.size} ensambles y ${comp.size} componentes cargados.`, 'ok');
+  } catch (e) { msg('Error al cargar: ' + e.message, 'err'); } finally { $('#ens-csv').disabled = false; }
 };
 
 /* ---------- Inicio ---------- */
