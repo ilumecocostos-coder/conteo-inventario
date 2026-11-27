@@ -16,7 +16,7 @@
 <section id="login">
   <form id="f-login" class="login-card">
     <img class="logo-login" src="logo.png" alt="" onerror="this.style.display='none'">
-    <div class="marca">Lámparas Ilumeco</div><h1>INVENTARIOS</h1>
+    <div class="marca">CONTEO INVENTARIO</div><h1>Cierre de año</h1>
     <label>Correo<input id="l-email" type="email" autocomplete="username" required></label>
     <label>Contraseña<input id="l-pass" type="password" autocomplete="current-password" required></label>
     <button class="btn" type="submit">Ingresar</button>
@@ -94,9 +94,23 @@
 
   <!-- Administración -->
   <section id="t-admin" class="vista" hidden>
-    <div id="sub"><button data-s="prod" class="on">Cargar CSV</button><button data-s="dif">Diferencias</button><button data-s="cat">Catálogos</button><button data-s="ens">Ensambles</button><button data-s="usr">Usuarios</button></div>
+    <div id="sub"><button data-s="res" class="on">Resumen</button><button data-s="prod">Cargar CSV</button><button data-s="dif">Diferencias</button><button data-s="cat">Catálogos</button><button data-s="ens">Ensambles</button><button data-s="usr">Usuarios</button></div>
 
-    <div id="sp-prod" class="sp panel"><h2>Cargar productos desde CSV</h2>
+    <div id="sp-res" class="sp">
+      <div class="res-top"><span class="nota" id="rs-hora">Sin cargar</span><button class="btn sec" id="rs-act">Actualizar</button></div>
+      <div class="kpis">
+        <div class="kpi"><small>Conteos hoy</small><b id="k-hoy">–</b></div>
+        <div class="kpi"><small>Conteos totales</small><b id="k-tot">–</b></div>
+        <div class="kpi"><small>Con diferencia</small><b id="k-dif">–</b></div>
+      </div>
+      <h3 class="sec">Avance por bodega</h3>
+      <div class="panel" id="rs-av"></div>
+      <h3 class="sec">Mayores diferencias</h3>
+      <p class="nota">Solo referencias ya contadas, ordenadas por la diferencia más grande entre lo contado y el sistema.</p>
+      <div class="tabla"><table id="rs-top"></table></div>
+    </div>
+
+    <div id="sp-prod" class="sp panel" hidden><h2>Cargar productos desde CSV</h2>
       <p class="nota">Columnas: referencia, descripcion, cantidad_sistema. Si la referencia ya existe en la bodega, se actualiza.</p>
       <label>Bodega<select id="a-bod"></select></label><input type="file" id="a-file" accept=".csv,text/csv">
       <button class="btn" id="a-cargar">Cargar CSV</button></div>

@@ -11,7 +11,7 @@ const fmtFecha = t => new Date(t).toLocaleString('es-CO', {day:'2-digit', month:
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&3|8)).toString(16); }));
 const sb = /PEGA_AQUI/.test(SUPABASE_URL + SUPABASE_ANON_KEY) ? null : supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const POR_PAG = 50;
-const S = { perfil:null, bodegas:[], bodega:null, prod:null, enviando:false, pag:1, total:0 };
+const S = { pendRef:null, perfil:null, bodegas:[], bodega:null, prod:null, enviando:false, pag:1, total:0 };
 
 /* ---------- Mensajes ---------- */
 let tt;
@@ -63,6 +63,7 @@ $$('#tabs button').forEach(b => b.onclick = () => {
   $('#p-titulo').textContent = TITULOS[b.dataset.t][0]; $('#p-sub').textContent = TITULOS[b.dataset.t][1];
   $$('#tabs button').forEach(x => x.classList.toggle('on', x === b));
   ['conteo', 'registros', 'ensambles', 'producto', 'admin'].forEach(t => $('#t-' + t).hidden = t !== b.dataset.t);
+  if (b.dataset.t === 'admin' && !$('#sp-res').hidden) cargarResumen();
 });
 
 /* ---------- 1) Selección de bodega ---------- */
@@ -77,6 +78,7 @@ $('#bodegas').onclick = async e => {
   $('#enc').innerHTML = opciones(en.data.map(r => r.encargados).filter(x => x && x.activo).sort((a, c) => a.nombre.localeCompare(c.nombre)), 'Selecciona encargado…');
   [$('#enc'), $('#ubi')].forEach(s => { if (s.options.length === 2) s.selectedIndex = 1; });   // si solo hay una opción, se elige sola
   $('#bodegas').hidden = true; $('#conteo').hidden = false; $('#ultimo').textContent = ''; resumen();
+  if (S.pendRef) aplicarRef();
 };
 $('#cambiar').onclick = () => { S.bodega = null; $('#conteo').hidden = true; $('#bodegas').hidden = false; };
 const txt = s => s.selectedIndex > 0 ? esc(s.options[s.selectedIndex].text) : '<em>sin elegir</em>';
@@ -260,6 +262,7 @@ $$('#sub button').forEach(b => b.onclick = () => {
   $$('#sub button').forEach(x => x.classList.toggle('on', x === b));
   $$('.sp').forEach(p => p.hidden = p.id !== 'sp-' + b.dataset.s);
   if (b.dataset.s === 'usr') cargarUsuarios();
+  if (b.dataset.s === 'res') cargarResumen();
 });
 const fallo = (e, dup) => msg(e.code === '23505' && dup ? dup : 'Error: ' + e.message, 'err');
 $('#b-add').onclick = async () => {
@@ -346,9 +349,23 @@ $('#ens-res').onclick = async e => {
   $('#ens-q').value = ref; $('#ens-res').innerHTML = '';
   $('#ens-det').innerHTML = `<div class="ens-card"><div class="eyebrow">Referencia principal</div><div class="ens-ref">${esc(ref)}</div><div class="ens-desc">${esc(desc)}</div>` +
     `<div class="eyebrow">Está formada por (${data.length})</div><div class="comp-lista">` +
-    (data.map(c => `<div class="comp"><b>${esc(c.componente)}</b>${c.descripcion ? `<span>${esc(c.descripcion)}</span>` : ''}${Number(c.cantidad) !== 1 ? `<em>× ${c.cantidad}</em>` : ''}</div>`).join('') || '<p class="vacio">Este ensamble aún no tiene componentes.</p>') + '</div></div>';
+    (data.map(c => `<div class="comp"><b>${esc(c.componente)}</b>${c.descripcion ? `<span>${esc(c.descripcion)}</span>` : ''}${Number(c.cantidad) !== 1 ? `<em>× ${c.cantidad}</em>` : ''}<button type="button" class="btn sec contar" data-contar="${esc(c.componente)}">Contar</button></div>`).join('') || '<p class="vacio">Este ensamble aún no tiene componentes.</p>') + '</div></div>';
   $('#ens-det').hidden = false; $('#ens-det').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 };
+
+/* ---------- Ensambles → Conteo: pasa a contar sin volver a buscar ---------- */
+$('#ens-det').onclick = e => { const b = e.target.closest('[data-contar]'); if (b) irAContar(b.dataset.contar); };
+function irAContar(ref) {
+  S.pendRef = ref;
+  $('#tabs button[data-t="conteo"]').click(); window.scrollTo(0, 0);
+  if (S.bodega) aplicarRef(); else msg('Elige la bodega para contar ' + ref + '.');   // al elegir la bodega, la referencia se carga sola
+}
+async function aplicarRef() {
+  const ref = S.pendRef; S.pendRef = null; if (!ref) return;
+  const { data } = await sb.from('productos_catalogo').select('referencia,descripcion').eq('bodega_id', S.bodega.id).eq('referencia', ref).maybeSingle();
+  if (!data) return msg('La referencia ' + ref + ' no existe en la bodega ' + S.bodega.id + '.', 'err');
+  elegirProd(data.referencia, data.descripcion);
+}
 
 /* ---------- Ensambles: administración (admin) ---------- */
 $('#ens-add').onclick = async () => {
@@ -387,6 +404,31 @@ $('#ens-csv').onclick = async () => {
     msg(`Listo: ${ens.size} ensambles y ${comp.size} componentes cargados.`, 'ok');
   } catch (e) { msg('Error al cargar: ' + e.message, 'err'); } finally { $('#ens-csv').disabled = false; }
 };
+
+/* ---------- Resumen (dashboard, solo admin): se carga solo al abrirlo ---------- */
+const nf = v => Number(v ?? 0).toLocaleString('es-CO');
+async function cargarResumen() {
+  const ini = new Date(); ini.setHours(0, 0, 0, 0);          // inicio del día en la hora del dispositivo
+  $('#rs-act').disabled = true;
+  try {
+    const [hoy, tot, av, dif] = await Promise.all([
+      sb.from('conteos').select('id', { count: 'exact', head: true }).eq('anulado', false).gte('creado_en', ini.toISOString()),
+      sb.from('conteos').select('id', { count: 'exact', head: true }).eq('anulado', false),
+      sb.from('avance_bodegas').select('*').order('bodega_id'),
+      sb.from('resumen_diferencias').select('*', { count: 'exact' }).order('abs_dif', { ascending: false }).limit(10)]);
+    const fallo = [hoy, tot, av, dif].find(r => r.error);
+    if (fallo) return msg('No se pudo cargar el resumen: ' + fallo.error.message, 'err');
+    $('#k-hoy').textContent = nf(hoy.count); $('#k-tot').textContent = nf(tot.count); $('#k-dif').textContent = nf(dif.count);
+    $('#rs-av').innerHTML = av.data.map(b => {
+      const t = Number(b.total_refs), c = Number(b.contadas), p = t ? Math.round(c / t * 100) : 0;
+      return `<div class="av"><div class="av-h"><b>${esc(b.bodega_id)} · ${esc(b.nombre)}</b><span>${nf(c)} / ${nf(t)} · ${p} %</span></div><div class="barra${p >= 100 ? ' ok' : ''}"><i style="width:${p}%"></i></div></div>`;
+    }).join('') || '<p class="vacio">Aún no hay bodegas.</p>';
+    $('#rs-top').innerHTML = '<tr><th>Bodega</th><th>Referencia</th><th>Descripción</th><th>Sistema</th><th>Contado</th><th>Dif.</th></tr>' +
+      (dif.data.map(r => `<tr class="dif"><td>${esc(r.bodega_id)}</td><td>${esc(r.referencia)}</td><td>${esc(r.descripcion)}</td><td class="n">${r.cantidad_sistema}</td><td class="n">${r.cantidad_contada}</td><td class="n d">${r.diferencia}</td></tr>`).join('') || '<tr><td colspan="6">Sin diferencias entre lo contado y el sistema.</td></tr>');
+    $('#rs-hora').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  } finally { $('#rs-act').disabled = false; }
+}
+$('#rs-act').onclick = cargarResumen;
 
 /* ---------- Inicio ---------- */
 if (/PEGA_AQUI/.test(SUPABASE_URL + SUPABASE_ANON_KEY)) msg('Falta pegar SUPABASE_URL y la clave en app.js (líneas 3 y 4).', 'err');
